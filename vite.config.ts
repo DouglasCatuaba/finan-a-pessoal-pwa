@@ -1,9 +1,10 @@
-// vite.config.ts ou .js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+
+// ajuste o nome do repositório aqui:
+const base = '/finan-a-pessoal-pwa/'
 
 export default defineConfig({
-  base: '/finan-a-pessoal-pwa/', // 
-  plugins: [react(), VitePWA({ registerType: 'autoUpdate' })],
+  base,
+  plugins: [react()],
 })
