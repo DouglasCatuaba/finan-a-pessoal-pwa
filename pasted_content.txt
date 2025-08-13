@@ -1,0 +1,365 @@
+Gere um aplicativo web PWA single-user de controle financeiro pessoal, 100% estático, pronto para GitHub Pages, sem backend.
+Deve ser rápido, responsivo, acessível, instalável e offline-first, com dados locais em IndexedDB (Dexie).
+
+1) Stack e padrões
+Build: Vite.
+
+Linguagem: TypeScript.
+
+UI: React + Tailwind CSS (dark/light).
+
+Estado: Zustand (ou Context API, justificar se usar).
+
+DB: IndexedDB com Dexie (com migrações versionadas).
+
+Gráficos: Recharts.
+
+PWA: vite-plugin-pwa (manifest, service worker, ícones).
+
+Lint/format: ESLint + Prettier.
+
+Testes: Vitest para utilitários (parser CSV, regras, cálculos).
+
+Localização: pt-BR; moeda BRL via Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).
+
+Licença: MIT.
+
+2) Design System (tokens + componentes base)
+Tipografia
+
+Títulos: text-2xl/3xl semibold; corpo text-sm/base regular.
+
+Fonte padrão do sistema; altura de linha confortável (leading-6).
+
+Cores (pode ajustar, manter contraste AA):
+
+Primária: #2563eb (hover: #1d4ed8).
+
+Sucesso: #16a34a; Aviso: #f59e0b; Perigo: #dc2626.
+
+Texto em claro: #0f172a; fundo claro: #f8fafc.
+
+Dark mode: fundo #0b1220, cartões #111827, textos #e5e7eb.
+
+Bordas & sombras
+
+Raio: rounded-2xl em cartões e botões; inputs rounded-lg.
+
+Sombra macia: shadow-md em cartões; shadow-sm em inputs focados.
+
+Espaçamentos
+
+Grid base 8px (p-2, p-4, gap-4/6), respiro generoso.
+
+Estados & feedback (microcopy)
+
+Toasts (top-right): sucesso (“Salvo com sucesso”), erro (“Algo deu errado”), info (“Importando… aguarde”).
+
+Loading: spinners discretos aria-live="polite".
+
+Empty states: ilustração leve + botão de ação principal.
+
+Componentes base (Tailwind + acessibilidade)
+
+Button: variantes primary, secondary, ghost, danger; tamanhos sm|md|lg.
+Estados: hover, active, focus-visible:ring-2 ring-offset-2, disabled:opacity-50 cursor-not-allowed.
+
+Input (text, number, date, select): border rounded-lg px-3 py-2 focus:ring-2 focus:border-transparent.
+Erro: borda border-red-500, ajuda text-red-600 text-xs.
+
+CurrencyInput: máscara BRL (aceitar , e .; sempre mostrar separador de milhar e 2 casas).
+
+DatePicker: dd/mm/aaaa (armazenar ISO).
+
+Select/Combobox com busca, acessível por teclado.
+
+Modal/Dialog com role="dialog", foco preso, Esc fecha (quando seguro).
+
+Table com cabeçalho “sticky”, zebra, colunas responsivas; ações por linha.
+
+Tag/Badge para entrada (verde) e saída (vermelho).
+
+ProgressBar para orçamentos (exibir % e cor muda ao exceder).
+
+3) Estrutura de dados (Dexie)
+transactions:
+{ id, date (ISO yyyy-mm-dd), type: 'entrada'|'saida', amount (centavos, number), category, subcategory?, account?, description?, createdAt, updatedAt }
+Índices: date, type, category.
+
+recurrings:
+{ id, title, type, amount (centavos), category, dayOfMonth (1..31), active (bool), lastEmitted? (yyyy-mm) }.
+
+budgets:
+{ id, month (yyyy-mm), category, limit (centavos) }.
+
+rules:
+{ id, keyword (string, case-insensitive), category, subcategory? }.
+
+4) Telas (layout, campos, botões, funcionalidades)
+4.1 Layout geral
+Topbar com título “Controle Financeiro”, botão + Adicionar (abre modal “Nova Movimentação”), ícone de tema (claro/escuro), e menu (Dashboard, Movimentações, Recorrentes, Orçamentos, Regras, Configurações).
+
+Container central max-width max-w-6xl mx-auto p-4 md:p-6.
+
+4.2 Dashboard
+Seções:
+
+Cards de KPI (grid 1/2/3/4 cols responsivo):
+
+“Saldo do Mês”, “Entradas do Mês”, “Saídas do Mês”.
+
+Números grandes; subtítulo com período selecionado (ex.: “Agosto/2025”).
+
+Botão de filtro de período (mês atual por padrão) — DateRange ou seletor “mês/ano”.
+
+Gráficos:
+
+Pizza: Saídas por Categoria (mês); legenda clicável para esconder/mostrar.
+
+Barras: Entradas x Saídas (últimos 6 meses); tooltip com valores formatados.
+
+Atalhos rápidos: botões configuráveis (ex.: “+ Saída Alimentação”, “+ Saída Transporte”).
+
+Campos e botões:
+
+Seletor de período (MonthPicker) no topo direito do dashboard.
+
+Botão “Exportar CSV/JSON” (menu) para backup rápido.
+
+Empty state:
+
+“Sem dados neste mês. Clique em + Adicionar para criar sua primeira movimentação.”
+
+4.3 Movimentações (lista)
+Header de filtros (cards compactos):
+
+Período: DateRange (início/fim) + botão “Mês atual”.
+
+Tipo: Select (Entrada, Saída, Todos).
+
+Categoria: Select (dinâmico das existentes).
+
+Conta: Select (opcional).
+
+Busca livre: Input com placeholder="Buscar por descrição..." (Enter aplica).
+
+Botões: Importar, Exportar, Limpar filtros.
+
+Tabela
+
+Colunas: Data (dd/mm/aaaa), Tipo (badge), Categoria › Subcategoria, Conta, Descrição, Valor (alinhado à direita), Ações.
+
+Ações por linha: Editar, Duplicar, Excluir (com confirmação).
+
+Rodapé: soma de entradas, saídas e saldo do período filtrado.
+
+Empty state:
+
+Texto + botão “Importar CSV” e “+ Adicionar”.
+
+4.4 Modal: Nova/Editar Movimentação
+Campos (ordem e design):
+
+Data (DatePicker) – obrigatório.
+
+Tipo: Entrada | Saída (segmented control).
+
+Valor (CurrencyInput) – obrigatório; dica: “Use vírgula ou ponto. Ex.: 45,90”.
+
+Categoria (Select) – obrigatório.
+
+Subcategoria (Input/Select livre).
+
+Conta/Cartão (Input/Select opcional).
+
+Descrição (Textarea curta).
+
+Validações
+
+Data válida e ≤ hoje por padrão (permitir futuro se usuário quiser).
+
+Tipo selecionado.
+
+Valor > 0.
+
+Categoria preenchida.
+
+Ações no rodapé
+
+Salvar (primary) — disabled enquanto inválido; mostra spinner ao salvar.
+
+Salvar e adicionar outra (secondary).
+
+Cancelar (ghost).
+
+Atalho teclado: Ctrl/Cmd+S salva; Esc cancela.
+
+Auto-categoria (regras)
+
+Se categoria/subcategoria vazias, sugerir com base em rules usando keyword que apareça em description ou account (case-insensitive). Mostrar “Sugestão: Alimentação › Almoço (Aplicar?)”.
+
+4.5 Recorrentes
+Lista
+
+Colunas: Título, Tipo (badge), Valor (BRL), Categoria, Dia do mês, Ativo (toggle), Último lançamento (yyyy-mm), Ações.
+
+Botões: Novo recorrente (abre modal), Lançar mês (CTA principal no topo).
+
+Regra: Lançar mês cria todas as transações para o mês atual sem duplicar (usa lastEmitted); mostrar resumo “X lançadas, Y já existiam”.
+
+Modal Novo/Editar recorrente
+
+Campos: Título, Tipo, Valor (CurrencyInput), Categoria, Dia do mês (1–31, com dica “ajustamos automaticamente para meses curtos”), Ativo (checkbox).
+
+Rodapé: Salvar, Cancelar.
+
+4.6 Orçamentos
+Grid por categoria (cards)
+
+Campos por card: Categoria (Select), Mês (MonthPicker), Limite (CurrencyInput).
+
+Barra de progresso: % usado (verde <80%, amarelo 80–100%, vermelho >100%).
+
+Lista de categorias com limite do mês atual; permitir Adicionar orçamento rápido.
+
+Tooltip ao exceder: “Você ultrapassou o limite em R$ X,XX”.
+
+4.7 Regras (Auto-categoria)
+Tabela
+
+Colunas: Palavra-chave, Categoria, Subcategoria, Ações (Editar/Excluir).
+
+Dica: “Palavra-chave procura na descrição e na conta (sem distinguir maiúsculas).”
+
+Botão Testar regras: abre campo de texto (descrição simulada) e mostra categoria sugerida.
+
+4.8 Importar (Wizard em 3 passos)
+Upload: arrastar/soltar ou selecionar arquivo. Aceitar .csv (, e ;). Mostrar tamanho e primeira linha.
+
+Mapeamento de colunas: dropdown por coluna para mapear em date, type, amount, category, subcategory, account, description.
+
+Normalizar números (45,90 → 45.90).
+
+Dica de tipos válidos para coluna type (aceitar variantes: entrada, receita, income; saida, despesa, expense).
+
+Prévia: tabela com as 20 primeiras linhas já normalizadas + contagens de linhas válidas/invalidas. Checkbox “Aplicar regras de auto-categoria quando categoria/subcategoria estiverem vazias”.
+Botões: Importar (primary), Voltar, Cancelar.
+Feedback: barra de progresso, total importado, toasts de sucesso/erro.
+
+4.9 Exportar
+CSV e JSON das tabelas selecionadas (checkbox: transactions, recurrings, budgets, rules).
+
+Nome do arquivo: backup-financas-YYYY-MM-DD-HH-mm.
+
+4.10 Configurações
+Tema: toggle Claro / Escuro (persistir em localStorage).
+
+Backup/Restore:
+
+Backup agora → baixa JSON com todas as tabelas.
+
+Restaurar → upload do JSON; opção Mesclar (mantém e acrescenta) ou Substituir (apaga e reescreve) com dupla confirmação (“DIGITE RESTAURAR”).
+
+Botão Limpar dados (wipe DB) — confirmação dupla.
+
+Sobre/Privacidade: “Seus dados ficam apenas no seu navegador.”
+
+5) Regras de negócio e cálculos
+Saldo do Mês = Σ entradas − Σ saídas (filtradas por mês/período).
+
+Entradas x Saídas (6m): agregar por yyyy-mm.
+
+Saídas por Categoria (mês): agrupar e ordenar por valor decrescente.
+
+Orçamento: somar saídas da categoria no mês; comparar com limit.
+
+Recorrentes: ao “Lançar mês”, criar transactions com date = yyyy-mm-dayOfMonth (ajustar para último dia do mês se necessário); atualizar lastEmitted=yyyy-mm.
+
+6) Acessibilidade e usabilidade
+Todos inputs com label visível, aria-* consistente e mensagem de erro aria-live.
+
+Navegação por teclado (tab order lógico; Enter confirma, Esc cancela modais).
+
+Foco visível (focus-visible:ring-2).
+
+Contraste AA para texto e elementos interativos.
+
+Tamanho alvo mínimo 40×40px em botões no mobile.
+
+7) Performance
+Code-splitting por rotas/features.
+
+Memoização (React.memo, useMemo) em listas grandes.
+
+Virtualização de tabela quando > 2.000 linhas.
+
+8) Pastas & organização
+bash
+Copiar
+Editar
+/src
+  /app            (rotas, layout, providers, theme)
+  /db             (dexie, schemas, seeds, migrations)
+  /features
+    /dashboard
+    /transactions  (pages, components, services, hooks)
+    /recurrings
+    /budgets
+    /rules
+    /settings
+  /components      (Button, Input, CurrencyInput, Select, Modal, Table, Card, DateRangePicker, FileDropzone, Toast)
+  /utils           (formatCurrency, parseCSV, dateHelpers, calcMetrics, applyRules)
+  /store           (Zustand slices)
+  /assets          (icons, manifest, pwa)
+  /styles          (tailwind.css)
+9) Testes (Vitest)
+parseCSV: detecta , e ;, normaliza 45,90 → 45.90, ignora linhas inválidas.
+
+applyRules: casa keyword em descrição/conta (case-insensitive).
+
+calcMetrics: saldo do mês, agrupamentos por categoria, 6 meses.
+
+10) PWA/Offline
+Estratégias:
+
+Assets estáticos: StaleWhileRevalidate.
+
+HTML: NetworkFirst.
+
+Detectar nova versão de SW e exibir banner “Atualização disponível — Recarregar”.
+
+11) README obrigatório
+Incluir:
+
+npm i, npm run dev, npm run build, npm run preview.
+
+Deploy no GitHub Pages (via gh-pages ou Actions pages.yml).
+
+Formatos de CSV/JSON com exemplos.
+
+Como ativar PWA (instalar).
+
+Como backup/restore.
+
+Notas de migração Dexie.
+
+Prints das telas (gerar alguns ao buildar).
+
+12) Critérios de aceite (DoD)
+Publicável no GitHub Pages (pasta dist/).
+
+Dashboard com KPIs corretos, pizza por categoria e barras 6m.
+
+Movimentações: filtros funcionais, CRUD, duplicar, exportar/importar.
+
+Recorrentes: “Lançar mês” respeita lastEmitted.
+
+Orçamentos: criação/edição, barra de progresso e alerta ao exceder.
+
+Regras: aplicadas na criação/importação e ferramenta de teste.
+
+PWA instalável e funcional offline; atualização sinalizada.
+
+Tema dark/light persistente; acessibilidade AA.
+
+Testes Vitest passando.
